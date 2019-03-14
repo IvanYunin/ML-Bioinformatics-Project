@@ -90,3 +90,57 @@ def cross_val(model, data, batch_size, learning_rate,num_epoch, ratio):
     
     print("Average accuracy: ", sum(acc_list)/(float(num_part)))
     
+
+def create_CNN(num_classes):
+
+    data = mx.sym.var('data') 
+    
+    layer_1 = conv_factory(data = data, num_filter = 15, conv_kernel = (1,11),
+            pool_kernel = (1,5), conv_stride = (1,1), pool_stride = (1,3), name = 'L_1')
+    
+    layer_2 = conv_factory(data = layer_1, num_filter = 15, conv_kernel = (1,7),
+            pool_kernel = (1,5), conv_stride = (1,1), pool_stride = (1,3), name = 'L_2')
+
+    layer_3 = conv_factory(data = layer_2, num_filter = 15, conv_kernel = (1,7),
+            pool_kernel = (1,5), conv_stride = (1,1), pool_stride = (1,3), name = 'L_3')
+
+    layer_4 = conv_factory(data = layer_3, num_filter = 15, conv_kernel = (1,5),
+            pool_kernel = (1,5), conv_stride = (1,1), pool_stride = (1,3), name = 'L_4')
+
+    layer_5 = conv_factory(data = layer_4, num_filter = 15, conv_kernel = (1,5),
+            pool_kernel = (1,5), conv_stride = (1,1), pool_stride = (1,3), name = 'L_5')
+
+    flat = mx.sym.flatten(data = layer_5)
+    
+
+    fc_1 = mx.sym.FullyConnected(data = flat, num_hidden = 7000)
+    relu_1 = mx.symbol.Activation(data = fc_1, act_type = 'relu')
+    dropout1 = mx.sym.Dropout(data=relu_1, p=0.5)
+
+    fc_2 = mx.sym.FullyConnected(data = dropout1, num_hidden = 5000)
+    relu_2 = mx.symbol.Activation(data = fc_2, act_type = 'relu')
+    dropout2 = mx.sym.Dropout(data=relu_2, p=0.5)
+
+    fc_3 = mx.sym.FullyConnected(data = dropout2, num_hidden = num_classes)
+
+    logreg = mx.sym.SoftmaxOutput(data = fc_3, name = 'softmax')
+    model = mx.mod.Module(symbol = logreg, context = mx.cpu())
+    return model
+    
+
+def conv_factory(data, num_filter, conv_kernel, pool_kernel, conv_stride = (1,1), 
+            pool_stride = (1,1),
+            name = None, suffix = '', attr = {}):
+
+    conv = mx.symbol.Convolution(data = data, num_filter = num_filter, 
+            kernel = conv_kernel, stride = conv_stride,
+            name = 'conv_%s%s' %(name, suffix))
+
+    act = mx.symbol.Activation(data = conv, act_type = 'relu', 
+            name = 'relu_%s%s' %(name, suffix), attr = attr)
+    
+    pool = mx.sym.Pooling(data = act, pool_type = "max", 
+            kernel = pool_kernel, stride = pool_stride,
+            name = 'pool_%s%s' %(name, suffix))
+
+    return pool
